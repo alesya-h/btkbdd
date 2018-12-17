@@ -2,6 +2,8 @@
  * Input and HID logic
  * Lubomir Rintel <lkundrak@v3.sk>
  * License: GPL
+ *
+ * 2018: The code was fixed using some code extracted from Vojtech Pavlik's evtest
  */
 
 #include <errno.h>
@@ -22,6 +24,13 @@
 #include "btkbdd.h"
 #include "hid.h"
 #include "linux2hid.h"
+
+#define BITS_PER_LONG (sizeof(long) * 8)
+#define NBITS(x) ((((x)-1)/BITS_PER_LONG)+1)
+#define OFF(x)  ((x)%BITS_PER_LONG)
+#define BIT(x)  (1UL<<OFF(x))
+#define LONG(x) ((x)/BITS_PER_LONG)
+#define test_bit(bit, array)((array[LONG(bit)] >> OFF(bit)) & 1)
 
 /* A packet we're sending to host after a keypress */
 struct key_report {
@@ -227,9 +236,9 @@ input_open (dev)
 	char *dev;
 {
 	int version;
-	int features;
 	int input;
 	int norepeat[2] = { 0, 0 };
+	unsigned long bit[EV_MAX][NBITS(KEY_MAX)];
 
 	input = open (dev, O_RDWR);
 	if (input == -1) {
@@ -248,11 +257,12 @@ input_open (dev)
 	}
 
 	/* Ensure we're talking to a keyboard. TODO: Check for LED support. */
-	if (ioctl (input, EVIOCGBIT(0, EV_MAX), &features) == -1) {
+	memset(bit, 0, sizeof(bit));
+	if (ioctl (input, EVIOCGBIT(0, EV_MAX), bit[0]) == -1) {
 		perror ("Could query device for supported features");
 		goto fail;
 	}
-	if (!(features & EV_KEY)) {
+	if (!test_bit(EV_KEY, bit[0])) {
 		/* Not a keyboard? */
 		fprintf (stderr, "Device not capable of producing key press event.");
 		goto fail;
