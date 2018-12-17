@@ -5,7 +5,7 @@
 VERSION = 1.5
 
 CFLAGS += -Wall -g3
-override LDFLAGS += $(shell pkg-config bluez --libs)
+LIBS =  $(shell pkg-config bluez --libs)
 override LDFLAGS += -Wl,--as-needed
 
 PREFIX = /usr/local
@@ -28,7 +28,7 @@ btkbbdd/sdp.o: btkbdd/btkbdd.h btkbdd/apple.h
 evmuxd/evmuxd: evmuxd/main.o
 
 $(BINS):
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(LIBS)
 
 %.8: %.pod
 	pod2man --center 'System management commands' --release $(VERSION) $< >$@
